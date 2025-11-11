@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulário de Avaliação por Estrelas</title>
+    <style>
+        /* Estilos CSS (mantidos do código anterior) */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f9;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
+        }
+
+        /* Estilo das estrelas */
+        .rating {
+            display: inline-block;
+            direction: rtl; 
+        }
+
+        .rating input {
+            display: none; 
+        }
+
+        .rating label {
+            color: #ccc; 
+            font-size: 30px;
+            padding: 0 2px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        /* Regras de hover e seleção */
+        .rating input:checked ~ label {
+            color: #ffc107; 
+        }
+
+        .rating label:hover,
+        .rating label:hover ~ label {
+            color: #ffc107; 
+        }
+        
+        .result-score {
+            font-weight: bold;
+            color: #28a745;
+            font-size: 1.1em;
+        }
+
+        /* Estilos do Botão e da Área de Resultado */
+        #save-button {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin-top: 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #save-button:hover {
+            background-color: #218838;
+        }
+
+        #results-output {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+        }
+
+        #results-output h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+
+        #results-output pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Avaliação de 0 a 5 Estrelas</h1>
+
+        <table id="rating-table">
+            <thead>
+                <tr>
+                    <th>Nome do Avaliado</th>
+                    <th>Avaliação (Estrelas)</th>
+                    <th>Nota Final</th>
+                </tr>
+            </thead>
+            <tbody>
+                </tbody>
+        </table>
+
+        <button id="save-button" onclick="collectResults()">Salvar Avaliações</button>
+
+        <div id="results-output">
+            <h3>Resultado das Avaliações (JSON)</h3>
+            <p>Clique em "Salvar Avaliações" para ver o resultado abaixo.</p>
+            <pre id="json-results"></pre>
+        </div>
+    </div>
+
+    <script>
+        // Dados dos nomes (mantidos do código anterior)
+        const nomes = [
+            "AMANDA BEATRIZ VILAS BOAS DE", "BRENO BIAZZI DA CRUZ", "BRUNO CESAR PEREIRA", 
+            "CAÍQUE ROCHA PEREIRA", "DANIEL LABAIG TAVARES", "DAVI BERALDI SKRZEPSZAK", 
+            "DAVI CARLOS BERTOLDO DE ALMEIDA", "EDUARDO ALVES MARTIN", "EMILLY DA COSTA RODRIGUES", 
+            "FELIPE DE BITENCOURT ROTTA", "FELIPE GABRIEL DIAS DA SILVA", "GABRIEL BERNARDO DO PRADO", 
+            "GUILHERME TEODORO DOS SANTOS", "GUSTAVO ZANARDI MORTAES", "ISABELLA BERBERT DA SILVA", 
+            "ISADORA ASTRATH", "JOÃO FELIPE CHAVES", "JOÃO GABRIEL RIBEIRO", 
+            "JOÃO HENRIQUE LEMOS DOS SANTOS", "JOÃO PAULO DE OLIVEIRA DOS SANTOS", 
+            "JOÃO PAULO SANTOS DA SILVA", "JOÃO PEDRO BOER DOMINGOS", "JOÃO VITOR ROCHA HONAISER", 
+            "JUAN MIGUEL DE ANDRADE FERREIRA", "LAURA GUILHEM ALONSO DOS SANTOS", 
+            "LEANDRO HILLEBRAND PEREZ", "LORENZO CRISTIANINI DE OLIVEIRA", "LUCAS COSTA CRUZ CAMPOS", 
+            "LUCAS EDUARDO SILVA MANOEL", "LUCAS GABRIEL FERREIRA DA SILVA" // ... e os demais nomes
+        ];
+        
+        // Funções auxiliares (mantidas do código anterior)
+        function generateStarRating(name) {
+            let html = '<div class="rating">';
+            for (let i = 5; i >= 1; i--) {
+                const id = `${name.replace(/\s/g, '_')}-${i}`;
+                html += `
+                    <input type="radio" id="${id}" name="rating-${name}" value="${i}" />
+                    <label for="${id}" title="${i} Estrelas">★</label>
+                `;
+            }
+             html += `
+                <input type="radio" id="${name.replace(/\s/g, '_')}-0" name="rating-${name}" value="0" checked style="display: none;" />
+                <label for="${name.replace(/\s/g, '_')}-0" style="display: none;"></label>
+             `;
+            html += '</div>';
+            return html;
+        }
+
+        function updateScore(name, score) {
+            const scoreElement = document.getElementById(`score-${name.replace(/\s/g, '_')}`);
+            scoreElement.textContent = `${score} / 5`;
+        }
+
+        function renderTable() {
+            const tableBody = document.querySelector('#rating-table tbody');
+            
+            nomes.forEach(name => {
+                const cleanName = name.split(',')[0].trim();
+                const uniqueId = cleanName.replace(/\s/g, '_');
+
+                const row = tableBody.insertRow();
+                
+                const nameCell = row.insertCell();
+                nameCell.textContent = cleanName;
+                
+                const ratingCell = row.insertCell();
+                ratingCell.innerHTML = generateStarRating(cleanName);
+                
+                const scoreCell = row.insertCell();
+                scoreCell.innerHTML = `<span id="score-${uniqueId}" class="result-score">0 / 5</span>`;
+                
+                const ratingInputs = row.querySelectorAll(`input[name="rating-${cleanName}"]`);
+                ratingInputs.forEach(input => {
+                    input.addEventListener('change', (event) => {
+                        const newScore = event.target.value;
+                        updateScore(cleanName, newScore);
+                    });
+                });
+            });
+        }
+        
+        // --- NOVO: Função para Coletar os Resultados ---
+        function collectResults() {
+            const results = [];
+            
+            // 1. Itera sobre todos os nomes
+            nomes.forEach(name => {
+                const cleanName = name.split(',')[0].trim();
+                const radioName = `rating-${cleanName}`;
+                
+                // 2. Encontra o radio button (estrela) que foi marcado (checked)
+                const selectedInput = document.querySelector(`input[name="${radioName}"]:checked`);
+                
+                // 3. Obtém o valor da nota (0 a 5)
+                const score = selectedInput ? parseInt(selectedInput.value) : 0;
+                
+                // 4. Adiciona o resultado ao array
+                results.push({
+                    nome: cleanName,
+                    nota: score
+                });
+            });
+
+            // 5. Exibe os resultados em formato JSON
+            const jsonOutput = JSON.stringify(results, null, 2); // 'null, 2' para formatar com indentação
+            document.getElementById('json-results').textContent = jsonOutput;
+            
+            alert('Resultados coletados e exibidos na seção "Resultado das Avaliações (JSON)".');
+        }
+
+        document.addEventListener('DOMContentLoaded', renderTable);
+    </script>
+
+</body>
+</html>
